@@ -14,12 +14,94 @@ from datetime import datetime
 st.set_page_config(
     page_title="Real-Time Market Analytics",
     page_icon="📊",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 
 # =========================================================
-# AUTO REFRESH - EVERY 30 SECONDS
+# CUSTOM PROFESSIONAL UI
+# =========================================================
+
+st.markdown("""
+<style>
+
+    .main {
+        background-color: #0e1117;
+    }
+
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+
+    .dashboard-title {
+        font-size: 38px;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+
+    .dashboard-subtitle {
+        font-size: 16px;
+        opacity: 0.7;
+        margin-bottom: 25px;
+    }
+
+    .status-box {
+        padding: 10px 16px;
+        border-radius: 10px;
+        border: 1px solid #2d333b;
+        background: #161b22;
+        display: inline-block;
+        font-size: 14px;
+    }
+
+    .section-title {
+        font-size: 23px;
+        font-weight: 650;
+        margin-top: 25px;
+        margin-bottom: 12px;
+    }
+
+    div[data-testid="stMetric"] {
+        background: #161b22;
+        border: 1px solid #2d333b;
+        padding: 18px;
+        border-radius: 14px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    }
+
+    div[data-testid="stMetricLabel"] {
+        font-size: 14px;
+    }
+
+    div[data-testid="stMetricValue"] {
+        font-size: 25px;
+        font-weight: 700;
+    }
+
+    .info-card {
+        background: #161b22;
+        border: 1px solid #2d333b;
+        border-radius: 14px;
+        padding: 18px;
+        margin-bottom: 10px;
+    }
+
+    .footer {
+        text-align: center;
+        opacity: 0.55;
+        font-size: 13px;
+        margin-top: 35px;
+        padding: 20px;
+    }
+
+</style>
+""", unsafe_allow_html=True)
+
+
+# =========================================================
+# AUTO REFRESH
 # =========================================================
 
 st_autorefresh(
@@ -29,64 +111,11 @@ st_autorefresh(
 
 
 # =========================================================
-# BINANCE PUBLIC MARKET DATA API
+# BINANCE API
 # =========================================================
 
 BASE_URL = "https://data-api.binance.vision"
 
-
-# =========================================================
-# TITLE
-# =========================================================
-
-st.title("📊 Real-Time Market Analytics Dashboard")
-
-st.caption(
-    "Live cryptocurrency market monitoring using "
-    "Binance API, Pandas, Plotly and Technical Analysis"
-)
-
-
-# =========================================================
-# SIDEBAR
-# =========================================================
-
-st.sidebar.header("⚙️ Dashboard Settings")
-
-symbol = st.sidebar.selectbox(
-    "Select Cryptocurrency",
-    [
-        "BTCUSDT",
-        "ETHUSDT",
-        "BNBUSDT",
-        "SOLUSDT",
-        "XRPUSDT"
-    ]
-)
-
-interval = st.sidebar.selectbox(
-    "Select Time Interval",
-    [
-        "1m",
-        "5m",
-        "15m",
-        "1h",
-        "4h",
-        "1d"
-    ],
-    index=2
-)
-
-period = st.sidebar.selectbox(
-    "Historical Data",
-    [50, 100, 200],
-    index=1
-)
-
-
-# =========================================================
-# FUNCTION - API REQUEST
-# =========================================================
 
 def get_api_data(endpoint, params=None):
 
@@ -104,103 +133,142 @@ def get_api_data(endpoint, params=None):
 
 
 # =========================================================
-# LIVE 24H MARKET DATA
+# HEADER
+# =========================================================
+
+st.markdown(
+    '<div class="dashboard-title">📊 Real-Time Market Analytics</div>',
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    '<div class="dashboard-subtitle">'
+    'Live cryptocurrency market monitoring and technical analysis '
+    'using Binance public market data.'
+    '</div>',
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    '<div class="status-box">🟢 Live Market Data • Auto Refresh: 30 Seconds</div>',
+    unsafe_allow_html=True
+)
+
+
+# =========================================================
+# SIDEBAR
+# =========================================================
+
+st.sidebar.title("⚙️ Dashboard Settings")
+
+st.sidebar.markdown("---")
+
+symbol = st.sidebar.selectbox(
+    "🪙 Cryptocurrency",
+    [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT"
+    ]
+)
+
+interval = st.sidebar.selectbox(
+    "⏱️ Time Interval",
+    [
+        "1m",
+        "5m",
+        "15m",
+        "1h",
+        "4h",
+        "1d"
+    ],
+    index=2
+)
+
+period = st.sidebar.selectbox(
+    "📅 Historical Data",
+    [50, 100, 200],
+    index=1
+)
+
+st.sidebar.markdown("---")
+
+st.sidebar.info(
+    "This dashboard uses public Binance market data "
+    "for educational and analytical purposes."
+)
+
+
+# =========================================================
+# LIVE TICKER
 # =========================================================
 
 try:
 
     ticker = get_api_data(
         "/api/v3/ticker/24hr",
-        {
-            "symbol": symbol
-        }
+        {"symbol": symbol}
     )
 
 except Exception as e:
 
-    st.error(
-        f"Unable to fetch live market data: {e}"
-    )
-
+    st.error(f"Unable to fetch live market data: {e}")
     st.stop()
 
 
-# =========================================================
-# EXTRACT MARKET VALUES
-# =========================================================
-
-last_price = float(
-    ticker["lastPrice"]
-)
-
-price_change = float(
-    ticker["priceChangePercent"]
-)
-
-high_price = float(
-    ticker["highPrice"]
-)
-
-low_price = float(
-    ticker["lowPrice"]
-)
-
-volume = float(
-    ticker["volume"]
-)
+last_price = float(ticker["lastPrice"])
+price_change = float(ticker["priceChangePercent"])
+high_price = float(ticker["highPrice"])
+low_price = float(ticker["lowPrice"])
+volume = float(ticker["volume"])
 
 
 # =========================================================
-# LIVE MARKET OVERVIEW
+# MARKET OVERVIEW
 # =========================================================
 
-st.subheader("📌 Live Market Overview")
+st.markdown(
+    '<div class="section-title">📌 Live Market Overview</div>',
+    unsafe_allow_html=True
+)
 
 col1, col2, col3, col4, col5 = st.columns(5)
 
-
 with col1:
-
     st.metric(
-        "Current Price",
+        "💰 Current Price",
         f"${last_price:,.2f}"
     )
 
-
 with col2:
-
     st.metric(
-        "24H Change",
+        "📈 24H Change",
         f"{price_change:.2f}%"
     )
 
-
 with col3:
-
     st.metric(
-        "24H High",
+        "⬆️ 24H High",
         f"${high_price:,.2f}"
     )
 
-
 with col4:
-
     st.metric(
-        "24H Low",
+        "⬇️ 24H Low",
         f"${low_price:,.2f}"
     )
 
-
 with col5:
-
     st.metric(
-        "24H Volume",
+        "📦 24H Volume",
         f"{volume:,.2f}"
     )
 
 
 # =========================================================
-# HISTORICAL KLINE DATA
+# HISTORICAL DATA
 # =========================================================
 
 try:
@@ -216,16 +284,9 @@ try:
 
 except Exception as e:
 
-    st.error(
-        f"Unable to fetch historical data: {e}"
-    )
-
+    st.error(f"Unable to fetch historical data: {e}")
     st.stop()
 
-
-# =========================================================
-# CREATE DATAFRAME
-# =========================================================
 
 columns = [
     "Open Time",
@@ -249,7 +310,7 @@ df = pd.DataFrame(
 
 
 # =========================================================
-# DATA TYPE CONVERSION
+# DATA PROCESSING
 # =========================================================
 
 numeric_columns = [
@@ -275,7 +336,7 @@ df["Open Time"] = pd.to_datetime(
 
 
 # =========================================================
-# MOVING AVERAGE - MA20
+# TECHNICAL INDICATORS
 # =========================================================
 
 df["MA20"] = (
@@ -284,11 +345,6 @@ df["MA20"] = (
     .mean()
 )
 
-
-# =========================================================
-# RSI - 14
-# =========================================================
-
 rsi_indicator = RSIIndicator(
     close=df["Close"],
     window=14
@@ -296,39 +352,22 @@ rsi_indicator = RSIIndicator(
 
 df["RSI"] = rsi_indicator.rsi()
 
-
-# =========================================================
-# PRICE CHANGE %
-# =========================================================
-
 df["Price Change"] = (
     df["Close"]
     .pct_change()
     * 100
 )
 
+volatility = df["Price Change"].std()
 
-# =========================================================
-# VOLATILITY
-# =========================================================
-
-volatility = df[
-    "Price Change"
-].std()
+latest_close = df["Close"].iloc[-1]
+latest_ma = df["MA20"].iloc[-1]
+latest_rsi = df["RSI"].iloc[-1]
 
 
 # =========================================================
 # MARKET TREND
 # =========================================================
-
-latest_close = df[
-    "Close"
-].iloc[-1]
-
-latest_ma = df[
-    "MA20"
-].iloc[-1]
-
 
 if pd.isna(latest_ma):
 
@@ -348,57 +387,48 @@ else:
 
 
 # =========================================================
-# LATEST RSI
-# =========================================================
-
-latest_rsi = df[
-    "RSI"
-].iloc[-1]
-
-
-# =========================================================
 # TECHNICAL ANALYSIS
 # =========================================================
 
-st.subheader("📈 Technical Analysis")
+st.markdown(
+    '<div class="section-title">🧠 Technical Analysis</div>',
+    unsafe_allow_html=True
+)
 
 col1, col2, col3 = st.columns(3)
-
 
 with col1:
 
     st.metric(
-        "Market Trend",
+        "📊 Market Trend",
         trend
     )
-
 
 with col2:
 
     st.metric(
-        "Volatility",
+        "🌪️ Volatility",
         f"{volatility:.2f}%"
     )
-
 
 with col3:
 
     st.metric(
-        "RSI",
+        "📉 RSI (14)",
         f"{latest_rsi:.2f}"
     )
 
 
 # =========================================================
-# CANDLESTICK PRICE CHART
+# PRICE CHART
 # =========================================================
 
-st.subheader(
-    f"📊 {symbol} Price Chart"
+st.markdown(
+    '<div class="section-title">📈 Price Analysis</div>',
+    unsafe_allow_html=True
 )
 
 fig_price = go.Figure()
-
 
 fig_price.add_trace(
     go.Candlestick(
@@ -411,7 +441,6 @@ fig_price.add_trace(
     )
 )
 
-
 fig_price.add_trace(
     go.Scatter(
         x=df["Open Time"],
@@ -421,15 +450,13 @@ fig_price.add_trace(
     )
 )
 
-
 fig_price.update_layout(
-    title=f"{symbol} - Price & MA20",
-    xaxis_title="Time",
-    yaxis_title="Price",
+    title=f"{symbol} • Price & MA20",
     height=550,
-    xaxis_rangeslider_visible=False
+    template="plotly_dark",
+    xaxis_rangeslider_visible=False,
+    hovermode="x unified"
 )
-
 
 st.plotly_chart(
     fig_price,
@@ -438,111 +465,115 @@ st.plotly_chart(
 
 
 # =========================================================
-# VOLUME CHART
+# VOLUME + RSI
 # =========================================================
 
-st.subheader("📦 Trading Volume")
-
-fig_volume = go.Figure()
+col1, col2 = st.columns(2)
 
 
-fig_volume.add_trace(
-    go.Bar(
-        x=df["Open Time"],
-        y=df["Volume"],
-        name="Volume"
+# ---------------- VOLUME ----------------
+
+with col1:
+
+    st.markdown(
+        '<div class="section-title">📦 Trading Volume</div>',
+        unsafe_allow_html=True
     )
-)
 
+    fig_volume = go.Figure()
 
-fig_volume.update_layout(
-    title=f"{symbol} - Trading Volume",
-    xaxis_title="Time",
-    yaxis_title="Volume",
-    height=350
-)
-
-
-st.plotly_chart(
-    fig_volume,
-    use_container_width=True
-)
-
-
-# =========================================================
-# RSI CHART
-# =========================================================
-
-st.subheader("📉 RSI Indicator")
-
-fig_rsi = go.Figure()
-
-
-fig_rsi.add_trace(
-    go.Scatter(
-        x=df["Open Time"],
-        y=df["RSI"],
-        mode="lines",
-        name="RSI"
+    fig_volume.add_trace(
+        go.Bar(
+            x=df["Open Time"],
+            y=df["Volume"],
+            name="Volume"
+        )
     )
-)
+
+    fig_volume.update_layout(
+        title=f"{symbol} • Trading Volume",
+        height=380,
+        template="plotly_dark",
+        hovermode="x unified"
+    )
+
+    st.plotly_chart(
+        fig_volume,
+        use_container_width=True
+    )
 
 
-fig_rsi.add_hline(
-    y=70,
-    line_dash="dash",
-    annotation_text="Overbought - 70"
-)
+# ---------------- RSI ----------------
 
+with col2:
 
-fig_rsi.add_hline(
-    y=30,
-    line_dash="dash",
-    annotation_text="Oversold - 30"
-)
+    st.markdown(
+        '<div class="section-title">📉 RSI Indicator</div>',
+        unsafe_allow_html=True
+    )
 
+    fig_rsi = go.Figure()
 
-fig_rsi.update_layout(
-    title="Relative Strength Index (RSI)",
-    xaxis_title="Time",
-    yaxis_title="RSI",
-    yaxis_range=[0, 100],
-    height=350
-)
+    fig_rsi.add_trace(
+        go.Scatter(
+            x=df["Open Time"],
+            y=df["RSI"],
+            mode="lines",
+            name="RSI"
+        )
+    )
 
+    fig_rsi.add_hline(
+        y=70,
+        line_dash="dash",
+        annotation_text="Overbought"
+    )
 
-st.plotly_chart(
-    fig_rsi,
-    use_container_width=True
-)
+    fig_rsi.add_hline(
+        y=30,
+        line_dash="dash",
+        annotation_text="Oversold"
+    )
+
+    fig_rsi.update_layout(
+        title="Relative Strength Index",
+        height=380,
+        template="plotly_dark",
+        yaxis_range=[0, 100],
+        hovermode="x unified"
+    )
+
+    st.plotly_chart(
+        fig_rsi,
+        use_container_width=True
+    )
 
 
 # =========================================================
 # RSI INTERPRETATION
 # =========================================================
 
-st.subheader("🧠 RSI Interpretation")
-
+st.markdown(
+    '<div class="section-title">🧠 Market Interpretation</div>',
+    unsafe_allow_html=True
+)
 
 if latest_rsi >= 70:
 
     st.warning(
-        "⚠️ RSI is above 70. "
-        "The market may be overbought."
+        "⚠️ RSI is above 70 — the market may be overbought."
     )
 
 elif latest_rsi <= 30:
 
     st.info(
-        "ℹ️ RSI is below 30. "
-        "The market may be oversold."
+        "ℹ️ RSI is below 30 — the market may be oversold."
     )
 
 else:
 
     st.success(
-        "✅ RSI is between 30 and 70. "
-        "The market is in a normal range."
+        "✅ RSI is between 30 and 70 — the market is within a normal range."
     )
 
 
@@ -550,8 +581,10 @@ else:
 # TOP GAINERS & LOSERS
 # =========================================================
 
-st.subheader("🔥 Top Gainers & Losers")
-
+st.markdown(
+    '<div class="section-title">🔥 Market Movers</div>',
+    unsafe_allow_html=True
+)
 
 crypto_symbols = [
     "BTCUSDT",
@@ -561,9 +594,7 @@ crypto_symbols = [
     "XRPUSDT"
 ]
 
-
 market_data = []
-
 
 for crypto in crypto_symbols:
 
@@ -571,34 +602,23 @@ for crypto in crypto_symbols:
 
         data = get_api_data(
             "/api/v3/ticker/24hr",
-            {
-                "symbol": crypto
-            }
+            {"symbol": crypto}
         )
 
         market_data.append(
             {
                 "Symbol": crypto,
-                "Price": float(
-                    data["lastPrice"]
-                ),
-                "Change %": float(
-                    data["priceChangePercent"]
-                ),
-                "Volume": float(
-                    data["volume"]
-                )
+                "Price": float(data["lastPrice"]),
+                "Change %": float(data["priceChangePercent"]),
+                "Volume": float(data["volume"])
             }
         )
 
     except Exception:
-
         continue
 
 
-market_df = pd.DataFrame(
-    market_data
-)
+market_df = pd.DataFrame(market_data)
 
 
 if not market_df.empty:
@@ -612,7 +632,6 @@ if not market_df.empty:
         .head(5)
     )
 
-
     losers = (
         market_df
         .sort_values(
@@ -622,13 +641,11 @@ if not market_df.empty:
         .head(5)
     )
 
-
     col1, col2 = st.columns(2)
-
 
     with col1:
 
-        st.write("🚀 Top Gainers")
+        st.markdown("### 🚀 Top Gainers")
 
         st.dataframe(
             gainers,
@@ -636,10 +653,9 @@ if not market_df.empty:
             hide_index=True
         )
 
-
     with col2:
 
-        st.write("🔻 Top Losers")
+        st.markdown("### 🔻 Top Losers")
 
         st.dataframe(
             losers,
@@ -649,11 +665,13 @@ if not market_df.empty:
 
 
 # =========================================================
-# DETAILED MARKET DATA
+# DETAILED DATA
 # =========================================================
 
-st.subheader("📋 Detailed Market Data")
-
+st.markdown(
+    '<div class="section-title">📋 Detailed Market Data</div>',
+    unsafe_allow_html=True
+)
 
 display_df = df[
     [
@@ -669,7 +687,6 @@ display_df = df[
     ]
 ].copy()
 
-
 st.dataframe(
     display_df,
     use_container_width=True,
@@ -678,19 +695,20 @@ st.dataframe(
 
 
 # =========================================================
-# CSV DOWNLOAD
+# DOWNLOAD
 # =========================================================
 
-st.subheader("⬇️ Download Data")
-
+st.markdown(
+    '<div class="section-title">⬇️ Export Data</div>',
+    unsafe_allow_html=True
+)
 
 csv_data = df.to_csv(
     index=False
 ).encode("utf-8")
 
-
 st.download_button(
-    label="📥 Download CSV",
+    label="📥 Download Market Data CSV",
     data=csv_data,
     file_name=f"{symbol}_market_data.csv",
     mime="text/csv"
@@ -698,22 +716,22 @@ st.download_button(
 
 
 # =========================================================
-# LAST UPDATED
+# FOOTER
 # =========================================================
 
 current_time = datetime.now().strftime(
     "%d-%m-%Y %I:%M:%S %p"
 )
 
-
-st.caption(
-    f"🕒 Last updated: {current_time}"
-)
-
-st.caption(
-    "🔄 Dashboard automatically refreshes every 30 seconds."
-)
-
-st.caption(
-    "⚠️ This dashboard is for educational and analytical purposes only."
+st.markdown(
+    f"""
+    <div class="footer">
+        🕒 Last Updated: {current_time}<br>
+        🔄 Automatically refreshes every 30 seconds<br>
+        ⚠️ Educational and analytical purposes only<br><br>
+        <b>Real-Time Market Analytics Dashboard</b> •
+        Developed by M. Mohana • AI & Data Science
+    </div>
+    """,
+    unsafe_allow_html=True
 )
