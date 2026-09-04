@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import requests
 import plotly.graph_objects as go
 from ta.momentum import RSIIndicator
@@ -9,7 +8,7 @@ from datetime import datetime
 
 
 # =========================================================
-# PAGE CONFIGURATION
+# PAGE CONFIG
 # =========================================================
 
 st.set_page_config(
@@ -20,7 +19,7 @@ st.set_page_config(
 
 
 # =========================================================
-# AUTO REFRESH - 30 SECONDS
+# AUTO REFRESH - EVERY 30 SECONDS
 # =========================================================
 
 st_autorefresh(
@@ -30,14 +29,21 @@ st_autorefresh(
 
 
 # =========================================================
+# BINANCE PUBLIC MARKET DATA API
+# =========================================================
+
+BASE_URL = "https://data-api.binance.vision"
+
+
+# =========================================================
 # TITLE
 # =========================================================
 
 st.title("📊 Real-Time Market Analytics Dashboard")
 
 st.caption(
-    "Live cryptocurrency market monitoring using Binance API, "
-    "Pandas, Plotly and Technical Analysis"
+    "Live cryptocurrency market monitoring using "
+    "Binance API, Pandas, Plotly and Technical Analysis"
 )
 
 
@@ -67,51 +73,65 @@ interval = st.sidebar.selectbox(
         "1h",
         "4h",
         "1d"
-    ]
+    ],
+    index=2
 )
 
 period = st.sidebar.selectbox(
     "Historical Data",
-    [
-        50,
-        100,
-        200
-    ],
+    [50, 100, 200],
     index=1
 )
 
 
 # =========================================================
-# BINANCE API - LIVE MARKET DATA
+# FUNCTION - API REQUEST
 # =========================================================
 
-ticker_url = (
-    f"https://api.binance.com/api/v3/ticker/24hr"
-    f"?symbol={symbol}"
-)
+def get_api_data(endpoint, params=None):
+
+    url = BASE_URL + endpoint
+
+    response = requests.get(
+        url,
+        params=params,
+        timeout=15
+    )
+
+    response.raise_for_status()
+
+    return response.json()
+
+
+# =========================================================
+# LIVE 24H MARKET DATA
+# =========================================================
 
 try:
 
-    ticker_response = requests.get(
-        ticker_url,
-        timeout=10
+    ticker = get_api_data(
+        "/api/v3/ticker/24hr",
+        {
+            "symbol": symbol
+        }
     )
-
-    ticker_response.raise_for_status()
-
-    ticker = ticker_response.json()
 
 except Exception as e:
 
-    st.error(f"Unable to fetch live market data: {e}")
+    st.error(
+        f"Unable to fetch live market data: {e}"
+    )
+
     st.stop()
 
 
 # =========================================================
-# EXTRACT LIVE VALUES
+# EXTRACT MARKET VALUES
 # =========================================================
 
-last_price = float(ticker["lastPrice"])
+last_price = float(
+    ticker["lastPrice"]
+)
 
 price_change = float(
     ticker["priceChangePercent"]
@@ -131,12 +151,13 @@ volume = float(
 
 
 # =========================================================
-# KPI SECTION
+# LIVE MARKET OVERVIEW
 # =========================================================
 
 st.subheader("📌 Live Market Overview")
 
 col1, col2, col3, col4, col5 = st.columns(5)
+
 
 with col1:
 
@@ -145,12 +166,14 @@ with col1:
         f"${last_price:,.2f}"
     )
 
+
 with col2:
 
     st.metric(
         "24H Change",
         f"{price_change:.2f}%"
     )
+
 
 with col3:
 
@@ -159,12 +182,14 @@ with col3:
         f"${high_price:,.2f}"
     )
 
+
 with col4:
 
     st.metric(
         "24H Low",
         f"${low_price:,.2f}"
     )
+
 
 with col5:
 
@@ -178,27 +203,23 @@ with col5:
 # HISTORICAL KLINE DATA
 # =========================================================
 
-kline_url = (
-    f"https://api.binance.com/api/v3/klines"
-    f"?symbol={symbol}"
-    f"&interval={interval}"
-    f"&limit={period}"
-)
-
 try:
 
-    kline_response = requests.get(
-        kline_url,
-        timeout=10
+    klines = get_api_data(
+        "/api/v3/klines",
+        {
+            "symbol": symbol,
+            "interval": interval,
+            "limit": period
+        }
     )
-
-    kline_response.raise_for_status()
-
-    klines = kline_response.json()
 
 except Exception as e:
 
-    st.error(f"Unable to fetch historical data: {e}")
+    st.error(
+        f"Unable to fetch historical data: {e}"
+    )
+
     st.stop()
 
 
@@ -231,25 +252,21 @@ df = pd.DataFrame(
 # DATA TYPE CONVERSION
 # =========================================================
 
-df["Open"] = pd.to_numeric(
-    df["Open"]
-)
+numeric_columns = [
+    "Open",
+    "High",
+    "Low",
+    "Close",
+    "Volume"
+]
 
-df["High"] = pd.to_numeric(
-    df["High"]
-)
+for column in numeric_columns:
 
-df["Low"] = pd.to_numeric(
-    df["Low"]
-)
+    df[column] = pd.to_numeric(
+        df[column],
+        errors="coerce"
+    )
 
-df["Close"] = pd.to_numeric(
-    df["Close"]
-)
-
-df["Volume"] = pd.to_numeric(
-    df["Volume"]
-)
 
 df["Open Time"] = pd.to_datetime(
     df["Open Time"],
@@ -258,7 +275,7 @@ df["Open Time"] = pd.to_datetime(
 
 
 # =========================================================
-# MOVING AVERAGE
+# MOVING AVERAGE - MA20
 # =========================================================
 
 df["MA20"] = (
@@ -269,7 +286,7 @@ df["MA20"] = (
 
 
 # =========================================================
-# RSI
+# RSI - 14
 # =========================================================
 
 rsi_indicator = RSIIndicator(
@@ -281,11 +298,13 @@ df["RSI"] = rsi_indicator.rsi()
 
 
 # =========================================================
-# PRICE CHANGE
+# PRICE CHANGE %
 # =========================================================
 
 df["Price Change"] = (
-    df["Close"].pct_change() * 100
+    df["Close"]
+    .pct_change()
+    * 100
 )
 
 
@@ -293,23 +312,27 @@ df["Price Change"] = (
 # VOLATILITY
 # =========================================================
 
-volatility = (
-    df["Price Change"]
-    .std()
-)
+volatility = df[
+    "Price Change"
+].std()
 
 
 # =========================================================
 # MARKET TREND
 # =========================================================
 
-latest_close = df["Close"].iloc[-1]
+latest_close = df[
+    "Close"
+].iloc[-1]
 
-latest_ma = df["MA20"].iloc[-1]
+latest_ma = df[
+    "MA20"
+].iloc[-1]
+
 
 if pd.isna(latest_ma):
 
-    trend = "Not enough data"
+    trend = "⏳ Calculating"
 
 elif latest_close > latest_ma:
 
@@ -325,12 +348,22 @@ else:
 
 
 # =========================================================
+# LATEST RSI
+# =========================================================
+
+latest_rsi = df[
+    "RSI"
+].iloc[-1]
+
+
+# =========================================================
 # TECHNICAL ANALYSIS
 # =========================================================
 
 st.subheader("📈 Technical Analysis")
 
 col1, col2, col3 = st.columns(3)
+
 
 with col1:
 
@@ -339,6 +372,7 @@ with col1:
         trend
     )
 
+
 with col2:
 
     st.metric(
@@ -346,9 +380,8 @@ with col2:
         f"{volatility:.2f}%"
     )
 
-with col3:
 
-    latest_rsi = df["RSI"].iloc[-1]
+with col3:
 
     st.metric(
         "RSI",
@@ -357,7 +390,7 @@ with col3:
 
 
 # =========================================================
-# PRICE CHART
+# CANDLESTICK PRICE CHART
 # =========================================================
 
 st.subheader(
@@ -390,7 +423,7 @@ fig_price.add_trace(
 
 
 fig_price.update_layout(
-    title=f"{symbol} - Price & Moving Average",
+    title=f"{symbol} - Price & MA20",
     xaxis_title="Time",
     yaxis_title="Price",
     height=550,
@@ -458,14 +491,14 @@ fig_rsi.add_trace(
 fig_rsi.add_hline(
     y=70,
     line_dash="dash",
-    annotation_text="Overbought (70)"
+    annotation_text="Overbought - 70"
 )
 
 
 fig_rsi.add_hline(
     y=30,
     line_dash="dash",
-    annotation_text="Oversold (30)"
+    annotation_text="Oversold - 30"
 )
 
 
@@ -488,26 +521,28 @@ st.plotly_chart(
 # RSI INTERPRETATION
 # =========================================================
 
-latest_rsi = df["RSI"].iloc[-1]
-
 st.subheader("🧠 RSI Interpretation")
+
 
 if latest_rsi >= 70:
 
     st.warning(
-        "RSI is above 70 → Market may be Overbought."
+        "⚠️ RSI is above 70. "
+        "The market may be overbought."
     )
 
 elif latest_rsi <= 30:
 
     st.info(
-        "RSI is below 30 → Market may be Oversold."
+        "ℹ️ RSI is below 30. "
+        "The market may be oversold."
     )
 
 else:
 
     st.success(
-        "RSI is between 30 and 70 → Market is in a normal range."
+        "✅ RSI is between 30 and 70. "
+        "The market is in a normal range."
     )
 
 
@@ -517,6 +552,7 @@ else:
 
 st.subheader("🔥 Top Gainers & Losers")
 
+
 crypto_symbols = [
     "BTCUSDT",
     "ETHUSDT",
@@ -525,6 +561,7 @@ crypto_symbols = [
     "XRPUSDT"
 ]
 
+
 market_data = []
 
 
@@ -532,17 +569,12 @@ for crypto in crypto_symbols:
 
     try:
 
-        url = (
-            f"https://api.binance.com/api/v3/ticker/24hr"
-            f"?symbol={crypto}"
+        data = get_api_data(
+            "/api/v3/ticker/24hr",
+            {
+                "symbol": crypto
+            }
         )
-
-        response = requests.get(
-            url,
-            timeout=10
-        )
-
-        data = response.json()
 
         market_data.append(
             {
@@ -561,7 +593,7 @@ for crypto in crypto_symbols:
 
     except Exception:
 
-        pass
+        continue
 
 
 market_df = pd.DataFrame(
@@ -580,6 +612,7 @@ if not market_df.empty:
         .head(5)
     )
 
+
     losers = (
         market_df
         .sort_values(
@@ -589,7 +622,9 @@ if not market_df.empty:
         .head(5)
     )
 
+
     col1, col2 = st.columns(2)
+
 
     with col1:
 
@@ -600,6 +635,7 @@ if not market_df.empty:
             use_container_width=True,
             hide_index=True
         )
+
 
     with col2:
 
@@ -613,10 +649,11 @@ if not market_df.empty:
 
 
 # =========================================================
-# RAW MARKET DATA
+# DETAILED MARKET DATA
 # =========================================================
 
 st.subheader("📋 Detailed Market Data")
+
 
 display_df = df[
     [
@@ -646,6 +683,7 @@ st.dataframe(
 
 st.subheader("⬇️ Download Data")
 
+
 csv_data = df.to_csv(
     index=False
 ).encode("utf-8")
@@ -666,6 +704,7 @@ st.download_button(
 current_time = datetime.now().strftime(
     "%d-%m-%Y %I:%M:%S %p"
 )
+
 
 st.caption(
     f"🕒 Last updated: {current_time}"
